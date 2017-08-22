@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<head>
+  <title>Audio</title>
+  <script type="text/javascript" src="https://code.jquery.com/jquery-3.1.1.min.js"> </script>
+  <link rel="stylesheet" type="text/css" href="style.css" />
+</head>
+<body>
+<div id='header'>
+<h1>A Sonification inspired by Janet</h1>
+</div>
+<p id='main'>A pointillistic sonification of the traffic identified as research traffic in the four main Janet regions<br />
+Each point represents a region in the UK (England, Scotland, Wales, and Northern Ireland).</p>
+<p id="main">The data is converted from a CSV file into a <a href="janet.json">JSON file</a>. The data is also normalised as a percentage of the research traffic divided by overall traffic figures which is represented by up to four decimal places. Each item in the JSON arrays represents one month. <br />
+An experimental <a href="janet.as">auditory style sheet</a> is used to control the note and placing of the note by region when it is called.</p>
+<p id="main">As some of the data is small, the sonification boosts it within the code:<br />
+<code>
+  var calc_freq = function (freq) {
+      return (freq < 0.0001) ? 10 : freq * 100.0;
+
+  }
+</code><br/>
+This stops the WebAudio believing that there is no frequency presented, otherwise the data is written as a percentage.</p>
+<p id='playbtn' onmouseover="play()" >Play</p>
+<p name='about' id='about'> This website was created by Iain Emsley</p>
+<script type="text/javascript">
+var properties = [];
+function get_as() {
+$.ajax({url: "janet.as",  success: function( data ) {
+var tmp = data.split("\n\n");
+var _tmp = tmp[0].split("\n");
+
+//parser for rules
+_tmp.forEach( function(datum) {
+    if (datum) {
+      var _tmp_itm = datum.split(" {");
+      var _tmp_val = _tmp_itm[1].split(";");
+      var audio = []
+      for (var i in _tmp_val) {
+        if (_tmp_val[i] != '}') {
+          var spl = _tmp_val[i].split(':');
+          audio[spl[0].trim()] = spl[1];
+        }
+      }
+      properties[_tmp_itm[0]] = audio;
+    }
+ });
+} });
+}
+
+function play () {
+
+get_as(properties);
+
+// set the width / height boundaries. 
+var WIDTH = window.innerWidth;
+var HEIGHT = window.innerHeight;
+
+var xPos = Math.floor(WIDTH/2);
+console.log("width is " + xPos);
+var yPos = Math.floor(HEIGHT/2);
+console.log("height is " + HEIGHT);
+var zPos = 295;
+
+leftBound = (-xPos) + 50;
+rightBound = xPos - 50;
+
+//get the data
+$.ajax({url: "janet.json", success: function( data ) {
+  var notes = data.traffic;
+
+   window.AudioContext = window.AudioContext || window.webkitAudioContext;
+   var frequency;
+
+   var audioCtx = new AudioContext();
+   // create Oscillator node
+  var _old = 0;
+  var calc_freq = function (freq) {
+      return (freq < 0.0001) ? 10 : freq * 100.0;
+
+  }
+  var Note = (function(audioCtx) {
+    function Note(frequency, audio){
+      this.frequency = calc_freq(frequency );
+      this.note_length = audio.length/10;
+      this.x = audio.x;
+      this.y = audio.y;
+      this.z = audio.z;
+    }
+
+    Note.prototype.start = function() {
+
+      // set up the panner and listener objects
+      var panner = audioCtx.createPanner();
+      panner.panningModel = 'HRTF';
+      panner.distanceModel = 'inverse';
+      panner.refDistance = 1;
+      panner.maxDistance = 10000;
+      panner.rolloffFactor = 1;
+      panner.coneInnerAngle = 360;
+      panner.coneOuterAngle = 0;
+      panner.coneOuterGain = 0;
+      var listener = audioCtx.listener;
+      //set up a static listener
+      listener.setOrientation(0,0,-1,0,1,0);
+      listener.setPosition(xPos,yPos,300);
+      //listener.setPosition(this.xPos, this.y, this.z);
+
+      var oscillator = audioCtx.createOscillator();
+      oscillator.type = "sine";
+      oscillator.frequency.value = this.frequency; // value in hertz
+      oscillator.start(_old);
+      oscillator.stop(_old + this.note_length);
+      oscillator.connect(audioCtx.destination);
+      _old = _old + this.note_length;
+      oscillator.connect(panner);
+      panner.connect(audioCtx.destination);
+      panner.setOrientation(this.x, this.y, this.z);
+      panner.setPosition(this.x,this.y,this.z);
+     
+    };
+
+    return Note;
+  })(audioCtx);
+   //can we improve this with map?
+  
+   for (var i = 0; i < notes[0]['england'].length; i++) {
+
+     //play the note. Loop is unrolled but may be better as map?
+     function calculate_note(j, i) {
+         var _en = j['england'][i];
+         var _ni = j['ni'][i]
+         var _sc = j['scotland'][i];
+         var _wl = j['wales'][i];
+             
+         //play notes at the same time
+         note = new Note(_en, properties['england']);
+         note.start();
+         note1 = new Note(_ni, properties['ni']);
+         note1.start();
+         note2 = new Note(_sc, properties['scotland']);
+         note2.start();
+         note3 = new Note(_wl, properties['wales']);
+         note3.start();
+     }
+     calculate_note(notes[0], i);
+  };
+}
+});
+};
+</script>
+</body>
+</html>

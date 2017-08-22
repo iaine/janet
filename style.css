@@ -1,0 +1,37 @@
+body {
+   text-align:center;
+}
+#header {
+   font-size: 2.5em;
+   font-family: arial, sans serif;
+   background-color: #F0F8FF;
+   width:75%;
+   margin:auto;
+}
+
+#about {
+  font-size: 1em;
+  font-family: arial, sans serif;
+  color: white;
+  background-color: #00008B;
+  width:75%;
+  margin:auto;
+  padding: 10px;
+}
+
+#main {
+  font-size: 1em;
+  font-family: arial, sans serif;
+  width:75%;
+  margin:auto;
+  padding: 10px;
+}
+
+#playbtn {
+   height:10%;
+   width: 25%;
+   color: white;
+   background-color: #00008B;
+   margin: 20px auto;
+   padding: 10px;
+}
